@@ -12,7 +12,19 @@ from network import LeNet
 import numpy as np
 
 
+cur_model_path = None if not os.getenv('MODEL_PATH') else os.getenv('MODEL_PATH')
+if cur_model_path:
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model = torch.load(cur_model_path) if torch.cuda.is_available() else torch.load(cur_model_path,  map_location='cpu')
+    model = model.to(device)
+    model.eval()  # 把模型转为test模式
+else:
+    device = None
+    model = None
+
+
 def handle(event, context):
+    global cur_model_path, device, model
     data = event['data']
     if type(data) == bytes:
         data = json.loads(data)
@@ -27,10 +39,12 @@ def handle(event, context):
         image_path = data['IMAGE_PATH']
     else:
         return bytes('IMAGE_PATH must be provided!', encoding='utf-8')
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = torch.load(model_path)  # 加载模型
-    model = model.to(device)
-    model.eval()  # 把模型转为test模式
+    if model_path != cur_model_path:
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        model = torch.load(model_path) if torch.cuda.is_available() else torch.load(model_path,  map_location='cpu')
+        model = model.to(device)
+        model.eval()  # 把模型转为test模式
+        cur_model_path = model_path
 
     img = Image.open(image_path).convert('L')  # 读取要预测的图片
     trans = transforms.Compose(
@@ -61,10 +75,11 @@ def work(image_path, paths):
 
 if __name__ == '__main__':
     model_path = "./model.pth" if not os.getenv('MODEL_PATH') else os.getenv('MODEL_PATH')
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = torch.load(model_path)  # 加载模型
-    model = model.to(device)
-    model.eval()  # 把模型转为test模式
+    if model_path != env_model_path:
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        model = torch.load(model_path) if torch.cuda.is_available() else torch.load(model_path, map_location='cpu')
+        model = model.to(device)
+        model.eval()  # 把模型转为test模式
     paths = []
     work(sys.argv[1], paths)
     actual = 0

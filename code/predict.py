@@ -35,10 +35,14 @@ def handle(event, context):
         model_path = os.getenv('MODEL_PATH')
     if not model_path or len(model_path) == 0:
         return bytes('MODEL_PATH is necessary!', encoding='utf-8')
+    img = None
     if 'IMAGE_PATH' in data:
         image_path = data['IMAGE_PATH']
+        img = Image.open(image_path).convert('L')  # 读取要预测的图片
+    elif 'IMAGE_DATA' in data:
+        img = data['IMAGE_DATA']
     else:
-        return bytes('IMAGE_PATH must be provided!', encoding='utf-8')
+        return bytes('IMAGE_PATH or IMAGE_DATA must be provided!', encoding='utf-8')
     if model_path != cur_model_path:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         model = torch.load(model_path) if torch.cuda.is_available() else torch.load(model_path,  map_location='cpu')
@@ -46,7 +50,6 @@ def handle(event, context):
         model.eval()  # 把模型转为test模式
         cur_model_path = model_path
 
-    img = Image.open(image_path).convert('L')  # 读取要预测的图片
     trans = transforms.Compose(
         [
             transforms.ToTensor(),
